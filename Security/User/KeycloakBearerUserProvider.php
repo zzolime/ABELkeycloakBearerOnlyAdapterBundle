@@ -96,14 +96,13 @@ class KeycloakBearerUserProvider implements UserProviderInterface{
      */
     public function loadUserByIdentifier(string $accessToken): UserInterface
     {
-        $client = new Client([
-            'base_uri' => $this->issuer,
-        ]);
+        $client = new Client();
 
-        $response = $client->post('/realms/'.$this->realm.'/protocol/openid-connect/token/introspect', [
-            'auth' => [$this->client_id, $this->client_secret],
+        $response = $client->request('POST', $this->issuer.'/realms/'.$this->realm.'/protocol/openid-connect/token/introspect', [            
             'form_params' => [
                 'token' => $accessToken,
+                'client_id' => $this->client_id,
+                'client_secret' => $this->client_secret
             ],
             'proxy' => [
                 'http'  => '', // Use this proxy with "http"
@@ -119,18 +118,18 @@ class KeycloakBearerUserProvider implements UserProviderInterface{
             throw new CustomUserMessageAuthenticationException('The token does not exist or is not valid anymore');
         }
 
-        if (!isset($jwt['resource_access'][$this->client_id])) {
+        if (!isset($jwt['resource_access']['account'])) {
             throw new CustomUserMessageAuthenticationException('The token does not have the necessary permissions!');
         }
 
         return new KeycloakBearerUser(
             $jwt['sub'],
-            $jwt['name'],
+            $jwt['username'],
             $jwt['email'],
             $jwt['given_name'],
             $jwt['family_name'],
             $jwt['preferred_username'],
-            $jwt['resource_access'][$this->client_id]['roles'],
+            $jwt['resource_access']['account']['roles'],
             $accessToken
         );
     }
